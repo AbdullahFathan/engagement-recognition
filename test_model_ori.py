@@ -39,14 +39,16 @@ for actual_label, dir_path in test_image_dirs.items():
         if image_file.endswith(('.png', '.jpg', '.jpeg')):
             image_path = os.path.join(dir_path, image_file)
 
+            # Mulai waktu komputasi
+            start_time = time.time()
+
             # Baca gambar
             image = Image.open(image_path)
 
             # Terapkan transformasi langsung pada gambar asli
             input_tensor = data_transforms(image).unsqueeze(0)
 
-            # Mulai waktu komputasi
-            start_time = time.time()
+            
 
             # Lakukan prediksi
             with torch.no_grad():

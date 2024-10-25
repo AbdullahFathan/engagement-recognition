@@ -48,7 +48,11 @@ results = []
 for actual_label, dir_path in test_image_dirs.items():
     for image_file in os.listdir(dir_path):
         if image_file.endswith(('.png', '.jpg', '.jpeg')):
+
             image_path = os.path.join(dir_path, image_file)
+
+             # Mulai waktu komputasi
+            start_time = time.time()
 
             # Baca gambar
             image = cv2.imread(image_path)
@@ -60,8 +64,7 @@ for actual_label, dir_path in test_image_dirs.items():
             lbp_pil_image = Image.fromarray(lbp_image)
             input_tensor = data_transforms(lbp_pil_image).unsqueeze(0)
 
-            # Mulai waktu komputasi
-            start_time = time.time()
+           
 
             # Lakukan prediksi
             with torch.no_grad():
