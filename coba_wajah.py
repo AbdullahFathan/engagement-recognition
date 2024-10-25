@@ -9,7 +9,7 @@ from torchvision import transforms
 from torch import nn
 
 # Memuat kembali seluruh model
-model = torch.load('model_complete.pth',)
+model = torch.load('model.pth',)
 model.eval()
 
 class_label = ["very low", "low", "high", "very high" ]
