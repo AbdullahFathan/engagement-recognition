@@ -5,13 +5,13 @@ import pandas as pd
 import time  # Untuk mengukur waktu komputasi
 from PIL import Image
 from torchvision import transforms
+from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
 
 # Memuat model yang sudah disimpan
 model = torch.load('./model/model_ori.pth')
 model.eval()
 
 class_label = ["very low", "low", "high", "very high"]
-
 file_csv_name = "prediction_results_ori.csv"
 
 # Definisi transformasi PyTorch
@@ -32,6 +32,8 @@ test_image_dirs = {
 
 # Inisialisasi list untuk menyimpan hasil
 results = []
+all_actual = []  # Menyimpan semua label aktual
+all_predicted = []  # Menyimpan semua label prediksi
 
 # Proses setiap gambar di folder
 for actual_label, dir_path in test_image_dirs.items():
@@ -47,8 +49,6 @@ for actual_label, dir_path in test_image_dirs.items():
 
             # Terapkan transformasi langsung pada gambar asli
             input_tensor = data_transforms(image).unsqueeze(0)
-
-            
 
             # Lakukan prediksi
             with torch.no_grad():
@@ -66,10 +66,31 @@ for actual_label, dir_path in test_image_dirs.items():
                 'time_ms': round(elapsed_time, 2)  # Dibulatkan ke 2 desimal
             })
 
-# Buat DataFrame dari hasil
+            # Simpan untuk evaluasi metrik
+            all_actual.append(actual_label)
+            all_predicted.append(predicted_label)
+
+# Buat DataFrame dari hasil prediksi
 df = pd.DataFrame(results)
 
-# Simpan ke file CSV
-df.to_csv(f'{file_csv_name}', index=False)
+# Hitung metrik evaluasi
+accuracy = accuracy_score(all_actual, all_predicted)
+precision = precision_score(all_actual, all_predicted, average='weighted')
+recall = recall_score(all_actual, all_predicted, average='weighted')
+f1 = f1_score(all_actual, all_predicted, average='weighted')
 
-print(f"Hasil prediksi telah disimpan ke '{file_csv_name}'")
+# Tambahkan metrik evaluasi ke DataFrame
+df_metrics = pd.DataFrame([{
+    'accuracy': round(accuracy, 2),
+    'precision': round(precision, 2),
+    'recall': round(recall, 2),
+    'f1_score': round(f1, 2)
+}])
+
+# Gabungkan hasil prediksi dengan metrik evaluasi
+df_combined = pd.concat([df, df_metrics], ignore_index=True)
+
+# Simpan ke file CSV
+df_combined.to_csv(f'./dokumentasi/{file_csv_name}', index=False)
+
+print(f"Hasil prediksi dan evaluasi telah disimpan ke '{file_csv_name}'")
