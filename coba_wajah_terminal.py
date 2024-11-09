@@ -1,3 +1,9 @@
+import time
+
+# Start time for the activity
+overall_start_time = time.time()
+
+
 import cv2
 import torch
 import numpy as np
@@ -6,10 +12,6 @@ from skimage.feature import local_binary_pattern
 from torchvision import transforms
 from torch import nn
 from PIL import Image
-import time
-
-# Start time for the activity
-overall_start_time = time.time()
 
 # File text name
 txt_name = "classification_results_fathan"
