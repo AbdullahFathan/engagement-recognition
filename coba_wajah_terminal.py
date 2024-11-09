@@ -8,7 +8,10 @@ from torch import nn
 from PIL import Image
 import time
 
-#File text name
+# Start time for the activity
+overall_start_time = time.time()
+
+# File text name
 txt_name = "classification_results_fathan"
 
 # Load the pre-trained model
@@ -66,8 +69,8 @@ try:
         computation_time = end_time - start_time
         
         # Print the result
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        result = f"{timestamp} | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
+        activity_timer = time.time() - overall_start_time
+        result = f"Activity Timer: {activity_timer:.4f} seconds | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
         print(result)
         
         # Save result to a text file
