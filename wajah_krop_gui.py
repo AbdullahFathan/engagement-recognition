@@ -1,137 +1,135 @@
 import cv2
 import torch
-import numpy as np
-import tkinter as tk
-from tkinter import Label
-from PIL import Image, ImageTk
-from skimage.feature import local_binary_pattern
 from torchvision import transforms
 from facenet_pytorch import MTCNN
+from PIL import Image, ImageTk
+import tkinter as tk
+from tkinter import Label
 import os
 import time
 
 # File text name
-txt_name = "results_fathan_lbp_v2"
+txt_name = "ori_percobaan_gui"
 frame_path = f"frames/{txt_name}"
 os.makedirs(frame_path, exist_ok=True)
-os.makedirs("dokumentasi", exist_ok=True)
 
 # Load the pre-trained model
-model = torch.load('model/model_lbp_new.pth')
+model = torch.load('model/model_ori_p2.pth')
 model.eval()
 
 # Class labels
 class_label = ["very low", "low", "high", "very high"]
 
-# Function to apply LBP
-def lbp_transform(image):
-    image_np = np.array(image)
-    gray_image = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-    radius = 1
-    n_points = 8 * radius
-    lbp = local_binary_pattern(gray_image, n_points, radius, method="uniform")
-    lbp_normalized = np.uint8(255 * (lbp / lbp.max()))
-    lbp_tensor = torch.from_numpy(lbp_normalized).unsqueeze(0).repeat(3, 1, 1)
-    return lbp_tensor
-
-# Preprocessing pipeline
+# Define preprocessing transformations
 data_transforms = transforms.Compose([
-    transforms.Lambda(lbp_transform),
-    transforms.ToPILImage(),
+    transforms.Grayscale(num_output_channels=3),
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Initialize camera
-cap = cv2.VideoCapture(1)
-cap.set(cv2.CAP_PROP_FPS, 30)
-
 # Initialize MTCNN for face detection
 mtcnn = MTCNN()
 
-# Frame counter
-frame_counter = 1
+# GUI setup
+class FaceRecognitionApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Face Recognition GUI with Live Camera")
+        self.cap = cv2.VideoCapture(1)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
 
-# Save and log results
-def save_and_log_result(frame_id, predicted_label, computation_time):
-    result = f"Frame ID: {frame_id} | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
-    print(result)
-    with open(f'dokumentasi/{txt_name}.txt', "a") as file:
-        file.write(result + "\n")
+        # Frame for displaying video
+        self.video_frame = Label(self.root)
+        self.video_frame.pack()
 
-# GUI-based frame processing
-def process_frame():
-    global frame_counter
-    ret, frame = cap.read()
-    if ret:
-        start_time = time.time()
+        # Label for predictions
+        self.prediction_label = Label(self.root, text="Predicted Label: ", font=("Arial", 14))
+        self.prediction_label.pack()
 
-        # Detect faces
+        # Start the activity timer
+        self.overall_start_time = time.time()
+        self.frame_counter = 1
+
+        # Start capturing frames
+        self.running = True
+        self.capture_frame()
+
+    def capture_frame(self):
+        if not self.running:
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        # Detect faces in the frame
         boxes, _ = mtcnn.detect(frame)
+
+        # Process detected faces
         if boxes is not None:
-            for i, box in enumerate(boxes):
+            for box in boxes:
                 x1, y1, x2, y2 = map(int, box)
+
+                # Add margin to the bounding box
                 margin = 60
                 x1 = max(0, x1 - margin)
                 y1 = max(0, y1 - margin)
                 x2 = min(frame.shape[1], x2 + margin)
                 y2 = min(frame.shape[0], y2 + margin)
 
-                # Crop and process face
+                # Crop the face
                 cropped_face = frame[y1:y2, x1:x2]
                 cropped_face_pil = Image.fromarray(cv2.cvtColor(cropped_face, cv2.COLOR_BGR2RGB))
-                input_tensor = data_transforms(cropped_face_pil).unsqueeze(0)
 
-                # Prediction
+                # Preprocess and predict
+                input_tensor = data_transforms(cropped_face_pil).unsqueeze(0)
                 with torch.no_grad():
                     output = model(input_tensor)
                     _, predicted = torch.max(output, 1)
                     predicted_label = class_label[predicted]
 
-                # Save frame
-                frame_id = f"s-{frame_counter}"
+                # Save the frame with bounding box
+                frame_id = f"s-{self.frame_counter}"
                 frame_filename = f"{frame_path}/{frame_id}.jpg"
                 cv2.imwrite(frame_filename, frame)
 
-                # Log result
-                computation_time = time.time() - start_time
-                save_and_log_result(frame_id, predicted_label, computation_time)
+                # Draw bounding box and label on the frame
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, predicted_label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-                # Update GUI prediction label
-                prediction_label.config(text=f"Predicted: {predicted_label}")
+                # Log the result
+                end_time = time.time()
+                computation_time = end_time - self.overall_start_time
+                result = f"Frame ID: {frame_id} | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
+                print(result)
+                with open(f'dokumentasi/{txt_name}.txt', "a") as file:
+                    file.write(result + "\n")
 
-                frame_counter += 1
-        else:
-            prediction_label.config(text="No faces detected.")
+                self.frame_counter += 1
 
-        # Display frame in GUI
+        # Convert frame to ImageTk for GUI display
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_tk = ImageTk.PhotoImage(image=Image.fromarray(frame_rgb))
-        video_label.config(image=frame_tk)
-        video_label.image = frame_tk
+        img = Image.fromarray(frame_rgb)
+        imgtk = ImageTk.PhotoImage(image=img)
+        self.video_frame.imgtk = imgtk
+        self.video_frame.configure(image=imgtk)
 
-    # Repeat after 10 ms
-    root.after(10, process_frame)
+        # Update prediction label
+        self.prediction_label.config(text=f"Predicted Label: {predicted_label}" if boxes is not None else "No face detected")
 
-# Initialize GUI
-root = tk.Tk()
-root.title("LBP-Based Face Detection and Prediction")
+        # Schedule the next frame
+        self.root.after(10, self.capture_frame)
 
-# Create video display label
-video_label = Label(root)
-video_label.pack()
+    def stop(self):
+        self.running = False
+        self.cap.release()
+        cv2.destroyAllWindows()
+        self.root.quit()
 
-# Create prediction display label
-prediction_label = Label(root, text="Predicted: ", font=("Helvetica", 16))
-prediction_label.pack()
-
-# Start frame processing
-process_frame()
-
-# Run the Tkinter main loop
-root.mainloop()
-
-# Cleanup resources on exit
-cap.release()
-cv2.destroyAllWindows()
+# Run the application
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FaceRecognitionApp(root)
+    root.protocol("WM_DELETE_WINDOW", app.stop)
+    root.mainloop()

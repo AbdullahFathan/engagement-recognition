@@ -1,4 +1,8 @@
 import time
+
+
+# Start time for the activity
+overall_start_time = time.time()
 import cv2
 import torch
 import numpy as np
@@ -11,10 +15,10 @@ from facenet_pytorch import MTCNN
 import os
 
 # File text name
-txt_name = "results_fathan_lbp_v2"
+txt_name = "ori_percobaan5"
 
 # Load the pre-trained model
-model = torch.load('model/model_lbp_new.pth')
+model = torch.load('model/model_ori_p2.pth')
 model.eval()
 
 # Class labels
@@ -24,37 +28,10 @@ frame_path = f"frames/{txt_name}"
 os.makedirs(frame_path, exist_ok=True)
 
 
-# Function to convert image to LBP version
-def lbp_transform(x):
-    # Mengonversi gambar PIL ke array NumPy
-    image = np.array(x)
-
-    # Baca gambar dalam format grayscale
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-
-    # Parameter untuk LBP
-    radius = 1
-    n_points = 8 * radius
-
-    # Ekstraksi fitur LBP
-    lbp = local_binary_pattern(image, n_points, radius, method="uniform")
-
-    # Normalisasi agar nilai piksel berada di rentang 0-255
-    lbp_normalized = np.uint8(255 * (lbp / lbp.max()))
-
-    # Konversi hasil LBP ke tensor
-    lbp_tensor = torch.from_numpy(lbp_normalized)
-
-    # Mengubah dimensi tensor agar memiliki 3 saluran
-    lbp_tensor = lbp_tensor.unsqueeze(0).repeat(3, 1, 1)
-
-    return lbp_tensor
 
 # Define preprocessing transformations
 data_transforms = transforms.Compose([
-    #transforms.Lambda(lbp_transform),
-    #transforms.ToPILImage(),
-    transforms.Grayscale(num_output_channels=3),  # Untuk model ori
+    transforms.Grayscale(num_output_channels=3), 
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -121,8 +98,10 @@ try:
                 end_time = time.time()
                 computation_time = end_time - start_time
 
+                activity_timer = time.time() - overall_start_time
+
                 # Log the result with the frame ID instead of the activity timer
-                result = f"Frame ID: {frame_id}  | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
+                result = f"Activity Time: {activity_timer} | Frame ID: {frame_id}  | Predicted: {predicted_label} | Computation Time: {computation_time:.4f} seconds"
                 print(result)
 
                 # Save result to a text file
