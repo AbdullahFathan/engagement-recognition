@@ -3,6 +3,8 @@ import time
 
 # Start time for the activity
 overall_start_time = time.time()
+
+
 import cv2
 import torch
 import numpy as np
@@ -44,8 +46,6 @@ cap.set(cv2.CAP_PROP_FPS, 30)
 # Initialize MTCNN for face detection
 mtcnn = MTCNN()
 
-# Start time for the activity
-overall_start_time = time.time()
 
 # Frame ID counter
 frame_counter = 1
